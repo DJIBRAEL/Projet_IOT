@@ -52,7 +52,8 @@ def upload():
         return jsonify({"error": "Champs 'temperature' et 'humidity' requis"}), 400
 
     # On traite la mesure et on renvoie l'état de la LED
-    response_data, status_code = process_measure(payload["temperature"], payload["humidity"], source="esp32")
+    source_info = request.remote_addr or "esp32"
+    response_data, status_code = process_measure(payload["temperature"], payload["humidity"], source=source_info)
     
     # On ajoute l'état de la LED à la réponse pour l'ESP32
     if status_code == 200:

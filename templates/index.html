@@ -25,10 +25,14 @@
       --glass-border: rgba(255, 255, 255, 0.05);
       --glass-shine: rgba(255, 255, 255, 0.02);
 
-      --accent-primary: #00d2ff;     /* Cyano */
-      --accent-secondary: #9d50bb;   /* Purple */
-      --accent-led: #ff004c;         /* Red/Pink */
-      --accent-success: #00ff88;     /* Green */
+      --accent-primary: #00d2ff;
+      /* Cyano */
+      --accent-secondary: #9d50bb;
+      /* Purple */
+      --accent-led: #ff004c;
+      /* Red/Pink */
+      --accent-success: #00ff88;
+      /* Green */
 
       --text-main: #e6edf3;
       --text-dim: #8b949e;
@@ -38,7 +42,7 @@
       --radius-md: 16px;
       --transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
       --font-mono: 'JetBrains Mono', monospace;
-      
+
       --shadow-premium: 0 20px 40px rgba(0, 0, 0, 0.4);
     }
 
@@ -137,9 +141,20 @@
     }
 
     @keyframes pulse {
-      0% { transform: scale(1); opacity: 0.4; }
-      70% { transform: scale(2.5); opacity: 0; }
-      100% { transform: scale(1); opacity: 0; }
+      0% {
+        transform: scale(1);
+        opacity: 0.4;
+      }
+
+      70% {
+        transform: scale(2.5);
+        opacity: 0;
+      }
+
+      100% {
+        transform: scale(1);
+        opacity: 0;
+      }
     }
 
     /* Layout */
@@ -411,6 +426,61 @@
         font-size: 1rem !important;
       }
     }
+
+    /* History Table */
+    .history-card {
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .history-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    .history-table th {
+      background: rgba(255, 255, 255, 0.03);
+      padding: 1rem 1.5rem;
+      text-align: left;
+      font-weight: 700;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      font-size: 0.7rem;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--glass-border);
+    }
+
+    .history-table td {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--glass-border);
+      color: var(--text-main);
+    }
+
+    .history-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .history-table tr:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .badge-temp {
+      color: var(--accent-primary);
+      font-weight: 700;
+      font-family: var(--font-mono);
+    }
+
+    .badge-hum {
+      color: var(--accent-secondary);
+      font-weight: 700;
+      font-family: var(--font-mono);
+    }
+
+    .badge-time {
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+    }
   </style>
 </head>
 
@@ -459,7 +529,7 @@
 
     <div class="raw-log-container">
       <span id="raw-log">[STANDBY] Waiting for ESP32 stream...</span>
-      <span id="source-badge">SOURCE: NONE</span>
+      <span id="source-badge" style="font-weight: 700; font-size: 0.65rem;">SOURCE: NONE</span>
     </div>
 
     <div class="section-header">
@@ -493,6 +563,27 @@
       <div class="glass-card" style="height: 300px;"><canvas id="chart-hum"></canvas></div>
     </div>
 
+    <div class="section-header">
+      <span>03</span>
+      <h2>HISTORIQUE DES MESURES</h2>
+    </div>
+
+    <div class="glass-card history-card">
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Température</th>
+            <th>Humidité</th>
+            <th>Appareil / ESP32</th>
+          </tr>
+        </thead>
+        <tbody id="history-body">
+          <!-- Dynamically populated -->
+        </tbody>
+      </table>
+    </div>
+
   </main>
 
   <script>
@@ -505,7 +596,7 @@
       type: 'line',
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { 
+        plugins: {
           legend: { display: false },
           tooltip: {
             backgroundColor: 'rgba(10, 12, 16, 0.9)',
@@ -516,14 +607,14 @@
             displayColors: false
           }
         },
-        scales: { 
-          x: { display: false }, 
-          y: { 
-            grid: { color: 'rgba(255,255,255,0.03)', drawBorder: false }, 
-            ticks: { color: '#484f58', font: { family: 'JetBrains Mono', size: 10 } } 
-          } 
+        scales: {
+          x: { display: false },
+          y: {
+            grid: { color: 'rgba(255,255,255,0.03)', drawBorder: false },
+            ticks: { color: '#484f58', font: { family: 'JetBrains Mono', size: 10 } }
+          }
         },
-        elements: { 
+        elements: {
           line: { tension: 0.45, borderCapStyle: 'round' },
           point: { radius: 0, hoverRadius: 6, hoverBackgroundColor: color }
         }
@@ -587,8 +678,10 @@
       document.getElementById('raw-log').textContent = `[RECV] T=${data.temperature}°C | H=${data.humidity}% | ${data.timestamp}`;
 
       const badge = document.getElementById('source-badge');
-      badge.textContent = `SOURCE: ${data.source.toUpperCase()}`;
-      badge.style.color = data.source === 'mock' ? '#d29922' : '#3fb950';
+      if (badge) {
+        badge.textContent = `SOURCE: ${data.source.toUpperCase()}`;
+        badge.style.color = data.source === 'mock' ? '#d29922' : '#3fb950';
+      }
 
       // Charts (Update data AND labels)
       chartTemp.data.labels.push(data.timestamp);
@@ -607,7 +700,30 @@
       chartTemp.update('none');
       chartHum.update();
       console.log(`[Chart] Updated with T:${data.temperature} H:${data.humidity}`);
+
+      // Update History Table
+      updateHistoryTable(data);
     });
+
+    function updateHistoryTable(data) {
+      const tbody = document.getElementById('history-body');
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td class="badge-time">${data.timestamp}</td>
+        <td class="badge-temp">${data.temperature.toFixed(1)}°C</td>
+        <td class="badge-hum">${data.humidity.toFixed(1)}%</td>
+        <td style="font-size: 0.7rem; font-family: var(--font-mono); opacity: 0.8; color: ${data.source === 'mock' ? 'var(--text-dim)' : 'var(--accent-success)'}">
+          ${data.source === 'mock' ? 'SIMULATEUR' : 'ESP32: ' + data.source.toUpperCase()}
+        </td>
+      `;
+
+      tbody.prepend(row);
+
+      // Keep only last 10-15 entries in the table for performance
+      if (tbody.children.length > 15) {
+        tbody.removeChild(tbody.lastChild);
+      }
+    }
 
     socket.on('history', (history) => {
       console.log(`[Chart] Loading history: ${history.length} points`);
@@ -622,6 +738,9 @@
         chartTemp.data.datasets[0].data.push(d.temperature);
         chartHum.data.labels.push(d.timestamp);
         chartHum.data.datasets[0].data.push(d.humidity);
+
+        // Also populate table for historical data
+        updateHistoryTable(d);
       });
       chartTemp.update(); chartHum.update();
     });
