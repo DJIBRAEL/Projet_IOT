@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard</title>
+
+  <!-- Socket.IO & Chart.js -->
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- Premium Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap"
+    rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-dark: #020408;
+      --bg-surface: #0a0c10;
+      --glass-bg: rgba(10, 12, 16, 0.7);
+      --glass-border: rgba(255, 255, 255, 0.05);
+      --glass-shine: rgba(255, 255, 255, 0.02);
+
+      --accent-primary: #00d2ff;     /* Cyano */
+      --accent-secondary: #9d50bb;   /* Purple */
+      --accent-led: #ff004c;         /* Red/Pink */
+      --accent-success: #00ff88;     /* Green */
+
+      --text-main: #e6edf3;
+      --text-dim: #8b949e;
+      --text-muted: #484f58;
+
+      --radius-lg: 28px;
+      --radius-md: 16px;
+      --transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      --font-mono: 'JetBrains Mono', monospace;
+      
+      --shadow-premium: 0 20px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    /* Base */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      background-image:
+        radial-gradient(circle at 0% 0%, rgba(0, 242, 255, 0.05) 0%, transparent 40%),
+        radial-gradient(circle at 100% 100%, rgba(189, 0, 255, 0.05) 0%, transparent 40%);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 50px 50px;
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    /* Header */
+    header {
+      padding: 1.5rem 3rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--glass-bg);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--glass-border);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .brand-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .system-status {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent-success);
+      box-shadow: 0 0 12px var(--accent-success);
+      position: relative;
+    }
+
+    .status-dot::after {
+      content: "";
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      right: -2px;
+      bottom: -2px;
+      border-radius: 50%;
+      background: var(--accent-success);
+      opacity: 0.4;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); opacity: 0.4; }
+      70% { transform: scale(2.5); opacity: 0; }
+      100% { transform: scale(1); opacity: 0; }
+    }
+
+    /* Layout */
+    main {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem 3rem;
+    }
+
+    .section-header {
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .section-header span {
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      color: var(--accent-primary);
+      opacity: 0.8;
+    }
+
+    .section-header h2 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(to right, var(--text-main), var(--text-dim));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* Control Panel */
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .control-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg);
+      padding: 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--shadow-premium);
+      transition: var(--transition);
+    }
+
+    .control-card:hover {
+      border-color: rgba(255, 255, 255, 0.15);
+      transform: translateY(-4px);
+      background: rgba(15, 18, 24, 0.8);
+    }
+
+    .led-control {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .led-label {
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .led-desc {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+    }
+
+    /* Toggle Button */
+    .btn-toggle {
+      width: 120px;
+      height: 48px;
+      border-radius: 100px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+      cursor: pointer;
+      position: relative;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      padding: 0 6px;
+      outline: none;
+    }
+
+    .btn-toggle .thumb {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #484f58;
+      transition: var(--transition);
+      box-shadow: 0 0 0px transparent;
+    }
+
+    .btn-toggle .text {
+      position: absolute;
+      right: 15px;
+      font-weight: 800;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+      transition: var(--transition);
+    }
+
+    /* LED ACTIVE STATE */
+    .btn-toggle.active {
+      border-color: var(--accent-led);
+      background: rgba(255, 0, 76, 0.08);
+      box-shadow: 0 0 30px rgba(255, 0, 76, 0.15);
+    }
+
+    .btn-toggle.active .thumb {
+      transform: translateX(72px);
+      background: var(--accent-led);
+      box-shadow: 0 0 25px var(--accent-led);
+    }
+
+    .btn-toggle.active .text {
+      left: 15px;
+      right: auto;
+      color: var(--accent-led);
+    }
+
+    /* Metrics */
+    .metrics-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .glass-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg);
+      padding: 2.5rem;
+      transition: var(--transition);
+      box-shadow: var(--shadow-premium);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .glass-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, var(--glass-shine) 0%, transparent 100%);
+      pointer-events: none;
+    }
+
+    .glass-card:hover {
+      transform: translateY(-8px) scale(1.01);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .card-value {
+      font-family: var(--font-mono);
+      font-size: 4rem;
+      font-weight: 700;
+      line-height: 1;
+      margin: 1rem 0;
+    }
+
+    .card-unit {
+      font-size: 1.2rem;
+      color: var(--text-dim);
+      margin-left: 0.5rem;
+      font-weight: 400;
+    }
+
+    .data-temp .card-value {
+      color: var(--accent-primary);
+    }
+
+    .data-hum .card-value {
+      color: var(--accent-secondary);
+    }
+
+    /* Raw Log */
+    .raw-log-container {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px dashed var(--glass-border);
+      border-radius: 12px;
+      padding: 0.75rem 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      margin-bottom: 2rem;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* Charts */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    /* Responsive Adjustments */
+    @media (max-width: 1024px) {
+      .charts-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 768px) {
+      header {
+        padding: 1rem 1.5rem;
+      }
+
+      main {
+        padding: 1rem 1.5rem;
+      }
+
+      .metrics-container {
+        grid-template-columns: 1fr;
+      }
+
+      .card-value {
+        font-size: 3rem;
+      }
+
+      .control-card {
+        flex-direction: column;
+        gap: 1.5rem;
+        align-items: flex-start;
+      }
+
+      .btn-toggle {
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      .btn-toggle.active .thumb {
+        transform: translateX(calc(100% + 70px));
+        /* Adjustment for full width */
+      }
+
+      /* Re-adjust thumb for full width button */
+      .btn-toggle .thumb {
+        width: 36px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .card-value {
+        font-size: 2.5rem;
+      }
+
+      .raw-log-container {
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .brand-title {
+        font-size: 1rem !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-icon">⚡</div>
+      <div class="brand-title" style="font-weight: 800; font-size: 1.2rem;">Dashboard<span
+          style="font-weight: 400; opacity: 0.5;">WEB</span></div>
+    </div>
+    <div class="system-status">
+      <div class="status-dot"></div>
+      <span id="status-text">En direct</span>
+    </div>
+  </header>
+
+  <main>
+
+    <div class="section-header">
+      <span>00</span>
+      <h2>COMMANDES SYSTÈME</h2>
+    </div>
+
+    <div class="controls-grid">
+      <div class="control-card">
+        <div class="led-control">
+          <div
+            style="background: rgba(255, 0, 85, 0.1); width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff0055" stroke-width="2">
+              <path
+                d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41m12.72-12.72l-1.41 1.41" />
+            </svg>
+          </div>
+          <div>
+            <p class="led-label">LED Virtuelle</p>
+            <p class="led-desc">Contrôle à distance (ESP32 Pin 14)</p>
+          </div>
+        </div>
+        <button class="btn-toggle" id="led-btn">
+          <div class="thumb"></div>
+          <span class="text" id="led-text">OFF</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="raw-log-container">
+      <span id="raw-log">[STANDBY] Waiting for ESP32 stream...</span>
+      <span id="source-badge">SOURCE: NONE</span>
+    </div>
+
+    <div class="section-header">
+      <span>01</span>
+      <h2>MÉTRIQUES TEMPS RÉEL</h2>
+    </div>
+
+    <div class="metrics-container">
+      <div class="glass-card data-temp">
+        <p style="font-size: 0.7rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">Température
+        </p>
+        <div class="card-value"><span id="temp-num">--</span><span class="card-unit">°C</span></div>
+        <p style="font-size: 0.65rem; color: var(--text-muted); font-family: var(--font-mono);" id="minmax-temp">MIN 0.0
+          - MAX 0.0</p>
+      </div>
+      <div class="glass-card data-hum">
+        <p style="font-size: 0.7rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">Humidité</p>
+        <div class="card-value"><span id="hum-num">--</span><span class="card-unit">%</span></div>
+        <p style="font-size: 0.65rem; color: var(--text-muted); font-family: var(--font-mono);" id="minmax-hum">MIN 0.0
+          - MAX 0.0</p>
+      </div>
+    </div>
+
+    <div class="section-header">
+      <span>02</span>
+      <h2>ANALYTIQUE</h2>
+    </div>
+
+    <div class="charts-grid">
+      <div class="glass-card" style="height: 300px;"><canvas id="chart-temp"></canvas></div>
+      <div class="glass-card" style="height: 300px;"><canvas id="chart-hum"></canvas></div>
+    </div>
+
+  </main>
+
+  <script>
+    const socket = io();
+    const uiData = { labels: [], temp: [], hum: [] };
+    const MAX_PTS = 30;
+
+    // Charts
+    const chartConfig = (color) => ({
+      type: 'line',
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { 
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: 'rgba(10, 12, 16, 0.9)',
+            titleFont: { family: 'Inter', size: 12, weight: 'bold' },
+            bodyFont: { family: 'JetBrains Mono', size: 12 },
+            padding: 12,
+            cornerRadius: 12,
+            displayColors: false
+          }
+        },
+        scales: { 
+          x: { display: false }, 
+          y: { 
+            grid: { color: 'rgba(255,255,255,0.03)', drawBorder: false }, 
+            ticks: { color: '#484f58', font: { family: 'JetBrains Mono', size: 10 } } 
+          } 
+        },
+        elements: { 
+          line: { tension: 0.45, borderCapStyle: 'round' },
+          point: { radius: 0, hoverRadius: 6, hoverBackgroundColor: color }
+        }
+      }
+    });
+
+    const chartTemp = new Chart(document.getElementById('chart-temp'), {
+      ...chartConfig('#00f2ff'),
+      data: {
+        labels: [],
+        datasets: [{
+          data: [],
+          fill: true,
+          borderColor: '#00f2ff',
+          borderWidth: 2,
+          backgroundColor: 'rgba(0, 242, 255, 0.05)',
+          pointRadius: 2,
+          pointBackgroundColor: '#00f2ff'
+        }]
+      }
+    });
+
+    const chartHum = new Chart(document.getElementById('chart-hum'), {
+      ...chartConfig('#bd00ff'),
+      data: {
+        labels: [],
+        datasets: [{
+          data: [],
+          fill: true,
+          borderColor: '#bd00ff',
+          borderWidth: 2,
+          backgroundColor: 'rgba(189, 0, 255, 0.05)',
+          pointRadius: 2,
+          pointBackgroundColor: '#bd00ff'
+        }]
+      }
+    });
+
+    // LED Control
+    const ledBtn = document.getElementById('led-btn');
+    const ledText = document.getElementById('led-text');
+
+    ledBtn.onclick = () => {
+      socket.emit('toggle_led');
+    };
+
+    socket.on('led_update', (data) => {
+      if (data.state) {
+        ledBtn.classList.add('active');
+        ledText.textContent = 'ON';
+      } else {
+        ledBtn.classList.remove('active');
+        ledText.textContent = 'OFF';
+      }
+    });
+
+    // Data Updates
+    socket.on('new_data', (data) => {
+      document.getElementById('temp-num').textContent = data.temperature.toFixed(1);
+      document.getElementById('hum-num').textContent = data.humidity.toFixed(1);
+      document.getElementById('raw-log').textContent = `[RECV] T=${data.temperature}°C | H=${data.humidity}% | ${data.timestamp}`;
+
+      const badge = document.getElementById('source-badge');
+      badge.textContent = `SOURCE: ${data.source.toUpperCase()}`;
+      badge.style.color = data.source === 'mock' ? '#d29922' : '#3fb950';
+
+      // Charts (Update data AND labels)
+      chartTemp.data.labels.push(data.timestamp);
+      chartTemp.data.datasets[0].data.push(data.temperature);
+
+      chartHum.data.labels.push(data.timestamp);
+      chartHum.data.datasets[0].data.push(data.humidity);
+
+      if (chartTemp.data.labels.length > MAX_PTS) {
+        chartTemp.data.labels.shift();
+        chartTemp.data.datasets[0].data.shift();
+
+        chartHum.data.labels.shift();
+        chartHum.data.datasets[0].data.shift();
+      }
+      chartTemp.update('none');
+      chartHum.update();
+      console.log(`[Chart] Updated with T:${data.temperature} H:${data.humidity}`);
+    });
+
+    socket.on('history', (history) => {
+      console.log(`[Chart] Loading history: ${history.length} points`);
+      // Clear current UI data to avoid duplicates
+      chartTemp.data.labels = [];
+      chartTemp.data.datasets[0].data = [];
+      chartHum.data.labels = [];
+      chartHum.data.datasets[0].data = [];
+
+      history.slice(-MAX_PTS).forEach(d => {
+        chartTemp.data.labels.push(d.timestamp);
+        chartTemp.data.datasets[0].data.push(d.temperature);
+        chartHum.data.labels.push(d.timestamp);
+        chartHum.data.datasets[0].data.push(d.humidity);
+      });
+      chartTemp.update(); chartHum.update();
+    });
+  </script>
+</body>
+
+</html>

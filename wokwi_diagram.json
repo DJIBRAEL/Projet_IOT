@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "author": "Antigravity",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-esp32-devkit-v1", "id": "esp32", "top": 0, "left": 0, "attrs": {} },
+    { "type": "wokwi-dht22", "id": "dht1", "top": -120, "left": 100, "attrs": {} },
+    { "type": "wokwi-led", "id": "led1", "top": 100, "left": 150, "attrs": { "color": "red" } },
+    { "type": "wokwi-resistor", "id": "res1", "top": 150, "left": 150, "attrs": { "value": "220" } }
+  ],
+  "connections": [
+    [ "esp32:GND.1", "dht1:GND", "black", [ "v0" ] ],
+    [ "esp32:3V3", "dht1:VCC", "red", [ "v0" ] ],
+    [ "esp32:D15", "dht1:SDA", "green", [ "v0" ] ],
+    [ "esp32:D14", "led1:A", "blue", [ "v0" ] ],
+    [ "led1:C", "res1:1", "black", [ "v0" ] ],
+    [ "res1:2", "esp32:GND.1", "black", [ "v0" ] ]
+  ],
+  "dependencies": {}
+}
