@@ -45,6 +45,10 @@ void setup() {
 }
 
 /* ───────── LOOP ───────── */
+#include <WiFiClientSecure.h>
+
+/* ... (reste du setup déjà présent) ... */
+
 void loop() {
   if (millis() - lastSend > interval) {
     lastSend = millis();
@@ -56,39 +60,73 @@ void loop() {
       return;
     }
 
-    Serial.printf("🌡 %.1f°C | 💧 %.1f%%\n", data.temperature, data.humidity);
+    Serial.printf("\n[LOCAL] 🌡 %.1f°C | 💧 %.1f%% (Heap: %d)\n", 
+                  data.temperature, data.humidity, ESP.getFreeHeap());
 
     if (WiFi.status() == WL_CONNECTED) {
-      HTTPClient http;
-      http.begin(SERVER_URL);
-      http.addHeader("Content-Type", "application/json");
-      http.addHeader("Bypass-Tunnel-Reminder", "true"); // Pour Localtunnel
+      WiFiClientSecure *client = new WiFiClientSecure;
+      if (client) {
+        client->setInsecure(); // ✅ INDISPENSABLE pour HTTPS sur ESP32 sans certificat
+        
+        HTTPClient http;
+        Serial.print("[HTTP] Tentative de connexion...");
+        
+        if (http.begin(*client, SERVER_URL)) {
+          http.addHeader("Content-Type", "application/json");
+          http.addHeader("bypass-tunnel-reminder", "true"); // Pour Localtunnel
 
-      StaticJsonDocument<128> doc;
-      doc["temperature"] = data.temperature;
-      doc["humidity"] = data.humidity;
+          StaticJsonDocument<128> doc;
+          doc["temperature"] = data.temperature;
+          doc["humidity"] = data.humidity;
 
-      String json;
-      serializeJson(doc, json);
+          String json;
+          serializeJson(doc, json);
 
-      int code = http.POST(json);
+          int code = http.POST(json);
 
-      if (code > 0) {
-        String response = http.getString();
-        Serial.printf("✅ HTTP %d | Réponse: %s\n", code, response.c_str());
+          if (code > 0) {
+            String response = http.getString();
+            Serial.printf("✅ HTTP %d | Taille: %d\n", code, response.length());
+            
+            StaticJsonDocument<1536> respDoc;
+            DeserializationError err = deserializeJson(respDoc, response);
+            
+            if (!err) {
+              // 1. État de la LED
+              bool ledState = respDoc["led"] | false;
+              digitalWrite(LED_PIN, ledState ? HIGH : LOW);
+              
+              // 2. Données Dashboard
+              if (respDoc.containsKey("global_latest")) {
+                JsonObject global = respDoc["global_latest"];
+                float g_temp = global["temperature"] | 0.0;
+                float g_hum = global["humidity"] | 0.0;
+                const char* g_time = global["timestamp"] | "??";
+                const char* g_src = global["source"] | "esp32";
 
-        // --- NOUVEAU : On récupère l'état de la LED ---
-        StaticJsonDocument<256> respDoc;
-        DeserializationError err = deserializeJson(respDoc, response);
-        if (!err) {
-          bool ledState = respDoc["led"];
-          digitalWrite(LED_PIN, ledState ? HIGH : LOW);
-          Serial.printf("💡 LED State: %s\n", ledState ? "ON" : "OFF");
+                Serial.println("----------------------------------------");
+                Serial.println(">>> SYNC DASHBOARD (Real-time) <<<");
+                Serial.printf(" [SERVER] T=%.1f C | H=%.1f %%\n", g_temp, g_hum);
+                Serial.printf(" [TIME]   %s | SOURCE: %s\n", g_time, g_src);
+                Serial.printf(" [LED]    %s\n", ledState ? "ON (ACCUMU)" : "OFF");
+                Serial.println("----------------------------------------");
+              }
+            } else {
+              Serial.printf("❌ Erreur JSON: %s\n", err.c_str());
+            }
+          } else {
+            Serial.printf("❌ Erreur HTTP: %s\n", http.errorToString(code).c_str());
+          }
+          http.end();
+        } else {
+          Serial.println("❌ Impossible de commencer la connexion HTTP");
         }
+        delete client;
       } else {
-        Serial.printf("❌ Erreur HTTP: %s\n", http.errorToString(code).c_str());
+        Serial.println("❌ Erreur allocation WiFiClientSecure");
       }
-      http.end();
+    } else {
+      Serial.println("📡 WiFi déconnecté !");
     }
   }
 }

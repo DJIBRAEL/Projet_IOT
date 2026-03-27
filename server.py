@@ -59,9 +59,29 @@ def upload():
     if status_code == 200:
         content = response_data.get_json()
         content["led"] = led_state
+        
+        # On ajoute AUSSI la toute dernière valeur globale du dashboard
+        with data_lock:
+            if data_history:
+                content["global_latest"] = data_history[-1]
+            else:
+                content["global_latest"] = None
+                
         return jsonify(content), 200
     
     return response_data, status_code
+
+
+# ─────────────────────────────────────────────
+# Route /latest : renvoie la toute dernière mesure
+# ─────────────────────────────────────────────
+@app.route("/latest")
+def latest_api():
+    """Renvoie la dernière donnée reçue par le serveur."""
+    with data_lock:
+        if not data_history:
+            return jsonify({"error": "Aucune donnée"}), 404
+        return jsonify(data_history[-1])
 
 
 def process_measure(temp, hum, source="esp32"):
