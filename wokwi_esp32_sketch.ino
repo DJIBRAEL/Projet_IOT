@@ -8,8 +8,8 @@ const char* ssid = "Wokwi-GUEST";
 const char* password = "";
 
 /* ───────── SERVEUR FLASK ───────── */
-// ✅ NOUVELLE URL PUBLIQUE GÉNÉRÉE :
-const char* SERVER_URL = "https://sixty-hairs-stick.loca.lt/upload";
+// ✅ URL LOCALE directe (Idéal pour simuler avec Wokwi pour VS Code)
+const char* SERVER_URL = "http://localhost:5000/upload";
 
 /* ───────── BROCHES (VOTRE MONTAGE) ───────── */
 #define DHTPIN 15
@@ -18,7 +18,7 @@ const char* SERVER_URL = "https://sixty-hairs-stick.loca.lt/upload";
 DHTesp dht;
 
 unsigned long lastSend = 0;
-const long interval = 5000;
+const long interval = 2000; // ✅ Plus rapide pour réagir au dashboard
 
 /* ───────── WIFI ───────── */
 void setup_wifi() {
@@ -45,8 +45,6 @@ void setup() {
 }
 
 /* ───────── LOOP ───────── */
-#include <WiFiClientSecure.h>
-
 /* ... (reste du setup déjà présent) ... */
 
 void loop() {
@@ -64,16 +62,13 @@ void loop() {
                   data.temperature, data.humidity, ESP.getFreeHeap());
 
     if (WiFi.status() == WL_CONNECTED) {
-      WiFiClientSecure *client = new WiFiClientSecure;
-      if (client) {
-        client->setInsecure(); // ✅ INDISPENSABLE pour HTTPS sur ESP32 sans certificat
-        
-        HTTPClient http;
-        Serial.print("[HTTP] Tentative de connexion...");
-        
-        if (http.begin(*client, SERVER_URL)) {
-          http.addHeader("Content-Type", "application/json");
-          http.addHeader("bypass-tunnel-reminder", "true"); // Pour Localtunnel
+      WiFiClient client;
+      
+      HTTPClient http;
+      Serial.print("[HTTP] Tentative de connexion...");
+      
+      if (http.begin(client, SERVER_URL)) {
+        http.addHeader("Content-Type", "application/json");
 
           StaticJsonDocument<128> doc;
           doc["temperature"] = data.temperature;
@@ -121,10 +116,6 @@ void loop() {
         } else {
           Serial.println("❌ Impossible de commencer la connexion HTTP");
         }
-        delete client;
-      } else {
-        Serial.println("❌ Erreur allocation WiFiClientSecure");
-      }
     } else {
       Serial.println("📡 WiFi déconnecté !");
     }

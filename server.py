@@ -60,12 +60,10 @@ def upload():
         content = response_data.get_json()
         content["led"] = led_state
         
-        # On ajoute AUSSI la toute dernière valeur globale du dashboard
+        # On renvoie la dernière mesure globale (qui s'affiche sur le dashboard)
         with data_lock:
-            if data_history:
-                content["global_latest"] = data_history[-1]
-            else:
-                content["global_latest"] = None
+            global_latest = data_history[-1] if data_history else None
+            content["global_latest"] = global_latest
                 
         return jsonify(content), 200
     
